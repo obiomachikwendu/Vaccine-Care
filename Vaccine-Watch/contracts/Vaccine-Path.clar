@@ -1,4 +1,3 @@
-
 ;; Vaccine Distribution and Immunization Tracking System Smart Contract
 ;; 
 ;; Description:
@@ -42,6 +41,8 @@
 (define-constant ERR-INVALID-INPUT-DATA (err u113))
 (define-constant ERR-INVALID-EXPIRATION (err u114))
 (define-constant ERR-INVALID-CAPACITY (err u115))
+(define-constant ERR-INVALID-PRINCIPAL (err u116))
+(define-constant ERR-SELF-TRANSFER (err u117))
 
 
 ;; System Constants
@@ -149,6 +150,11 @@
     (> quantity u0)
 )
 
+;; Add validation for principal
+(define-private (validate-principal (principal-to-check principal))
+    (not (is-eq principal-to-check 'SP000000000000000000002Q6VF78))
+)
+
 ;; Read-Only Query Functions
 
 (define-read-only (get-contract-administrator)
@@ -190,6 +196,10 @@
 (define-public (transfer-administration (new-administrator principal))
     (begin
         (asserts! (is-contract-administrator) ERR-ADMIN-ONLY)
+        ;; Validate the new administrator principal
+        (asserts! (validate-principal new-administrator) ERR-INVALID-PRINCIPAL)
+        ;; Ensure not transferring to self
+        (asserts! (not (is-eq tx-sender new-administrator)) ERR-SELF-TRANSFER)
         (ok (var-set contract-administrator new-administrator))
     )
 )
@@ -201,6 +211,8 @@
     (license-expiry uint))
     (begin
         (asserts! (is-contract-administrator) ERR-UNAUTHORIZED-ACCESS)
+        ;; Validate the provider principal
+        (asserts! (validate-principal provider) ERR-INVALID-PRINCIPAL)
         (asserts! (validate-role-text role) ERR-INVALID-INPUT-DATA)
         (asserts! (validate-standard-text facility) ERR-INVALID-INPUT-DATA)
         (asserts! (validate-future-timestamp license-expiry) ERR-INVALID-EXPIRATION)
